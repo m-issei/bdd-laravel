@@ -10,7 +10,11 @@
 
     {{-- ナビゲーション --}}
     <nav class="bg-indigo-700 text-white px-6 py-3 flex items-center justify-between">
-        <span class="font-bold text-lg">スーパー管理者</span>
+        <div class="flex items-center gap-6">
+            <span class="font-bold text-lg">スーパー管理者</span>
+            <a href="{{ route('super.organizations.index') }}" class="text-sm font-semibold underline">組織管理</a>
+            <a href="{{ route('super.admins.index') }}" class="text-sm hover:underline opacity-80">管理者アカウント</a>
+        </div>
         <form method="POST" action="{{ route('super.logout') }}">
             @csrf
             <button class="text-sm hover:underline">ログアウト</button>
@@ -53,11 +57,12 @@
                     </thead>
                     <tbody class="divide-y">
                         @foreach ($organizations as $org)
-                            <tr class="hover:bg-gray-50">
+                            <tr class="hover:bg-gray-50 cursor-pointer"
+                                onclick="openEditModal({{ $org->id }}, '{{ addslashes($org->name) }}', '{{ addslashes($org->description ?? '') }}')">
                                 <td class="px-6 py-4 font-medium">{{ $org->name }}</td>
                                 <td class="px-6 py-4 text-gray-500">{{ $org->description ?? '—' }}</td>
                                 <td class="px-6 py-4 text-gray-500">{{ $org->created_at->format('Y/m/d') }}</td>
-                                <td class="px-6 py-4 text-right space-x-2">
+                                <td class="px-6 py-4 text-right space-x-2" onclick="event.stopPropagation()">
                                     <button
                                         onclick="openEditModal({{ $org->id }}, '{{ addslashes($org->name) }}', '{{ addslashes($org->description ?? '') }}')"
                                         class="text-indigo-600 hover:underline"
