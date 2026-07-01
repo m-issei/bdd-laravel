@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\Admin;
+use App\Models\Participant;
 use App\Models\User;
 
 return [
@@ -42,6 +44,18 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+        'super' => [
+            'driver' => 'session',
+            'provider' => 'admins',
+        ],
+        'admin' => [
+            'driver' => 'session',
+            'provider' => 'admins',
+        ],
+        'participant' => [
+            'driver' => 'session',
+            'provider' => 'participants',
+        ],
     ],
 
     /*
@@ -66,11 +80,14 @@ return [
             'driver' => 'eloquent',
             'model' => env('AUTH_MODEL', User::class),
         ],
-
-        // 'users' => [
-        //     'driver' => 'database',
-        //     'table' => 'users',
-        // ],
+        'admins' => [
+            'driver' => 'eloquent',
+            'model' => Admin::class,
+        ],
+        'participants' => [
+            'driver' => 'eloquent',
+            'model' => Participant::class,
+        ],
     ],
 
     /*
