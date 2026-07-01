@@ -5,188 +5,66 @@
 Laravel 12 + PHPUnit + Jest による仕様駆動開発（BDD）プロジェクト。
 **仕様（.feature / テストコード）を先に書き、実装はあとから行う**のが絶対ルール。
 
-- PHP 8.2 / Laravel 12.x
-- PHPUnit 11（PHP側テスト）
-- Jest（JavaScript側テスト）
-- Gherkin `.feature` ファイル（受け入れ仕様書）
+- PHP 8.2 / Laravel 12.x / PHPUnit 11 / Jest / Gherkin `.feature`
 
 ---
 
-## 仕様を受け取ったときの必須フロー
+## 必須フロー
 
 ユーザーから仕様・要件を渡されたとき、**必ずこの順序で進める**。勝手に実装へ飛ばない。
 
 ```
-STEP 1: 仕様を理解し、不明点を質問する
-  └─ /spec-review スキルを使って7つの観点から制約・エッジケースを網羅的にチェックする
-  └─ 曖昧な点・決まっていない点を洗い出してユーザーに確認する
+STEP 0（自動）: app/Models/ にファイルあり → 既存プロジェクト（STEP 1 で影響範囲調査を実施）
 
-STEP 2: 要件を整理してユーザーに提示し、承認を得る
-  └─ 「この理解で合っていますか？」と確認する
+STEP 1: 仕様理解・不明点の質問
+  └─ /spec-review スキルで制約・エッジケースを網羅的にチェック
+  └─ [既存] docs/guides/impact-report-guide.md を読み、関連ソースを調査して影響範囲をまとめる
 
-STEP 3: 設計方針を提案してユーザーに提示し、承認を得る
-  └─ 以下の粒度で必ず提示する（詳細は「設計提案の必須粒度」セクション参照）
-     - ディレクトリ構造（Models / Controllers / Services / Livewire / Enums）
-     - コントローラーの責務と主要メソッド
-     - サービス層の責務と主要メソッド
-     - Enum・定数の定義
-     - バリデーション（FormRequest）の設計
-     - 横断的関心事（マルチテナントスコープ等）の担保方針
+STEP 2: 要件整理（＋影響範囲レポート）→ ユーザーに提示・承認
+  └─ [既存] 承認後 docs/impact/<機能名>.md に保存
 
-STEP 4a: .feature ファイルを書いてユーザーに提示し、承認を得る
-  └─ features/<ロール>/<機能>.feature に Gherkin 形式で受け入れ仕様を記述する
-  └─ 正常系・異常系・境界値・状態網羅の全シナリオを Given/When/Then で書く
-  └─ 【役割】人間と Claude 双方が読む「仕様の単一ソース」。実装前に必ず参照する
+STEP 3: 設計方針を提案 → ユーザーに提示・承認
+  └─ docs/guides/step3-design-checklist.md を必ず読んでから設計する
 
-STEP 4b: PHPUnit テストケースを設計してユーザーに提示し、承認を得る
-  └─ .feature ファイルの各 Scenario を PHPUnit メソッドに対応させる
-  └─ 以下の4種類を必ず網羅する（詳細は「テストケース設計の必須粒度」セクション参照）
-     - 正常系
-     - 異常系（バリデーション違反・権限違反・存在しないリソース等）
-     - 境界値（文字数上限・下限、数値の端値）
-     - 状態・パターン網羅（Enumの全ケース、状態遷移の全パス）
+STEP 4a: .feature ファイルを書く → ユーザーに提示・承認
+  └─ features/<ロール>/<機能>.feature に Gherkin で受け入れ仕様を記述
+  └─ docs/guides/feature-file-guide.md を必ず読んでから書く
+
+STEP 4b: PHPUnit テストケースを設計 → ユーザーに提示・承認
+  └─ docs/guides/step4-testcase-checklist.md を必ず読んでから設計する
 
 STEP 5: 実装 → テスト実行（RED → GREEN）
-  └─ 実装を始める前に、対象機能の .feature ファイルを必ず読む
-  └─ 承認されたテストケースに基づいて実装する
+  └─ 対象の features/*.feature を必ず読んでから実装を始める
+  └─ docs/guides/bdd-workflow-guide.md に RED→GREEN の手順あり
 ```
 
-**各STEPで必ずユーザーの承認を得てから次のSTEPに進む。**
-承認なしに次のステップへ進まない。
+**各STEPで必ずユーザーの承認を得てから次のSTEPに進む。承認なしに次へ進まない。**
 
 ---
 
-## 設計提案の必須粒度（STEP 3）
-
-STEP 3でユーザーに提示する設計方針は、以下の項目を必ず含める。
-表面的な「方針」だけでなく、具体的なクラス名・メソッド名レベルまで示すこと。
-
-### 1. ディレクトリ構造
-以下のレイヤーを明示する：
-- `app/Models/` — 全モデル一覧
-- `app/Http/Controllers/` — ロールごとにサブディレクトリを切り、コントローラー一覧
-- `app/Http/Middleware/` — 認証・スコープ制御のミドルウェア
-- `app/Services/` — ビジネスロジックを担うサービスクラス一覧
-- `app/Livewire/` — Livewireコンポーネント一覧
-- `app/Enums/` — Enum・定数クラス一覧
-- `app/Http/Requests/` — FormRequestクラス一覧
-
-### 2. コントローラーの責務
-- コントローラーはリクエスト受取とレスポンス返却のみ、ロジックはServiceへ委譲
-- 主要なアクション（index / store / update / destroy 等）を列挙
-- 具体的なコード例を1つ示す
-
-### 3. サービス層の責務
-- 各Serviceクラスが持つメソッドとシグネチャを列挙
-- ビジネスルール（公開条件・状態遷移ガード等）がどのServiceに属するかを明示
-
-### 4. Enum・定数
-- 全Enumの名前・ケース・値を列挙
-- 将来拡張が想定される箇所はコメントで明示
-
-### 5. バリデーション設計
-- FormRequestクラス名と対応するアクションを列挙
-- 主要なルール（文字数・一意性・条件付き必須等）を示す
-
-### 6. 横断的関心事
-- マルチテナントスコープ・権限チェックの実現方法（Trait・Scope等）
-- 論理削除の統一方針（SoftDeletesの使用）
-- 認証ガードの設定方針
-
----
-
-## `.feature` ファイルの役割と使い方
-
-`.feature` ファイルは **人間と Claude の両方が読む「仕様の単一ソース」** である。
-
-### 目的
-
-| 読み手 | 目的 |
-|--------|------|
-| 人間（PM・開発者） | コードを読まずに「このシステムが何をするか」を理解する |
-| Claude | 実装・テスト作成前に期待する振る舞いを把握し、認識ズレを防ぐ |
-
-### ファイルの場所と対応関係
-
-| `.feature` ファイル | PHPUnit テストファイル |
-|--------------------|----------------------|
-| `features/super/auth.feature` | `tests/Features/BDD/Super/AuthTest.php` |
-| `features/super/organization.feature` | `tests/Features/BDD/Super/OrganizationTest.php` |
-| `features/admin/survey.feature` | `tests/Features/BDD/Admin/SurveyTest.php` |
-| （以下同様） | |
-
-### Claude が `.feature` ファイルを読むタイミング
-
-- **STEP 4b（PHPUnit テスト設計）の前**: `.feature` の Scenario をテストメソッドに変換する
-- **STEP 5（実装）の前**: 実装すべき振る舞いを確認してから実装を始める
-- **バグ修正の前**: 仕様として期待される動作を確認する
-
-### 新機能追加時の `.feature` ファイルの書き方
-
-```gherkin
-Feature: <機能名>
-  As a <ロール>
-  I want <やりたいこと>
-  So that <目的・価値>
-
-  Scenario: <正常系のシナリオ名>
-    Given <前提条件>
-    When <操作>
-    Then <期待する結果>
-
-  Scenario: <異常系のシナリオ名>
-    Given <前提条件>
-    When <不正な操作>
-    Then <エラーになる>
-```
-
----
-
-## 開発の絶対ルール：仕様ファースト
-
-実装コードを書く前に、必ず以下の順序で進める。
+## 絶対ルール：仕様ファースト
 
 ```
-1. 仕様を .feature ファイルまたはテストコードで記述する
-2. テストを実行して RED（失敗）を確認する
+1. 仕様を .feature またはテストコードで先に書く（RED）
+2. テストを実行して RED を確認する
 3. テストが通る最小限の実装を書く
-4. テストが GREEN になることを確認する
-5. リファクタリングしてテストが GREEN のままか確認する
+4. GREEN を確認する
+5. リファクタリングして GREEN のままか確認する
 ```
 
-**「テストを書いていないコードは存在しないのと同じ」という前提で作業する。**
+**「テストを書いていないコードは存在しないのと同じ」**
 
 ---
 
-## テストケース設計の必須粒度（STEP 4）
+## Claude が守るべきこと
 
-STEP 4でユーザーに提示するテストケースは、以下の4種類を**必ず全て**含める。
-正常系だけを書いて終わりにしない。
-
-### 1. 正常系
-- 仕様通りに動作する基本パスを検証する
-
-### 2. 異常系（必須）
-以下のパターンを漏れなく含める：
-- **バリデーション違反**: 必須項目の未入力、文字数超過、不正な形式（メール等）
-- **権限違反**: 他ロールのURLへのアクセス、他組織リソースへのアクセス
-- **存在しないリソース**: 存在しないIDへのアクセス（404）
-- **状態違反**: 許可されていない操作（公開済みアンケートの編集、提出済み回答の上書き等）
-
-### 3. 境界値テスト（必須）
-仕様に文字数・数値の制限がある場合は以下を全てテストする：
-- 上限値ちょうど（許容される）
-- 上限値+1（拒否される）
-- 下限値ちょうど（許容される）
-- 下限値-1（拒否される）
-
-例: タイトル255文字上限なら「255文字 → OK」「256文字 → NG」を両方書く。
-
-### 4. 状態・パターン網羅（必須）
-Enumや状態フラグが絡む処理は**全パターン**をテストする：
-- 全てのステータス値（例: draft / published それぞれでの動作）
-- 全ての状態遷移パス（許可されるもの・拒否されるもの）
-- 条件分岐が発生する全てのケース（例: 回答あり/なし、有効/無効）
+1. **app/Models/ にファイルあり → 必ず影響範囲調査を実施する**（docs/guides/impact-report-guide.md を読む）
+2. **影響範囲レポートへの承認なしに実装へ進まない**
+3. **実装前に対象の features/*.feature を必ず読む**
+4. **テストなしの実装コードを書かない**
+5. **テスト RED を確認してから実装に進む**
+6. **実装後に GREEN を確認する**
+7. **過剰な実装・先読み設計をしない**（テストが要求する最小限のみ）
 
 ---
 
@@ -194,32 +72,27 @@ Enumや状態フラグが絡む処理は**全パターン**をテストする：
 
 ```
 .
-├── features/                    # Gherkin 仕様書（受け入れ仕様書 兼 Claude の参照先）
-│   ├── super/                   # スーパー管理者機能
-│   │   ├── auth.feature
-│   │   ├── organization.feature
-│   │   └── admin_account.feature
-│   ├── admin/                   # 管理者機能
-│   │   ├── auth.feature
-│   │   ├── participant.feature
-│   │   ├── survey.feature
-│   │   ├── dashboard.feature
-│   │   └── announcement.feature
-│   └── app/                     # 参加者機能
-│       ├── auth.feature
-│       ├── survey_response.feature
-│       └── announcement.feature
+├── docs/
+│   ├── guides/              # Claude が各STEPで読む手順書（必要時に参照）
+│   │   ├── step3-design-checklist.md
+│   │   ├── step4-testcase-checklist.md
+│   │   ├── feature-file-guide.md
+│   │   ├── impact-report-guide.md
+│   │   └── bdd-workflow-guide.md
+│   ├── init/                # 初期フェーズのドキュメント成果物
+│   │   ├── SPEC.md
+│   │   ├── DESIGN.md
+│   │   └── TEST_CASES.md
+│   └── impact/              # 既存プロジェクトへの影響範囲レポート成果物
+├── features/
+│   ├── super/               # super/auth.feature 等
+│   ├── admin/               # admin/survey.feature 等
+│   └── app/                 # app/survey_response.feature 等
 ├── tests/
-│   ├── Feature/                 # Laravel 統合テスト
-│   ├── Features/BDD/            # BDD スタイルの機能テスト
-│   ├── Unit/                    # ユニットテスト
-│   └── stubs/                   # テンプレートファイル
-│       ├── FeatureTemplate.php
-│       └── UnitTemplate.php
-└── resources/specs/             # JavaScript Jest テスト
-    ├── SpecTemplate.js
-    ├── auth.spec.js
-    └── form-validation.spec.js
+│   ├── Features/BDD/        # Super/ Admin/ App/ サブディレクトリ
+│   ├── Unit/
+│   └── stubs/               # FeatureTemplate.php / UnitTemplate.php
+└── resources/specs/         # Jest テスト
 ```
 
 ---
@@ -227,203 +100,19 @@ Enumや状態フラグが絡む処理は**全パターン**をテストする：
 ## テスト実行コマンド
 
 ```bash
-# PHP 全テスト
-php artisan test
-
-# PHP 特定ファイル
-php artisan test tests/Features/BDD/UserFeatureTest.php
-
-# PHP フィルタ（メソッド名）
-php artisan test --filter="ユーザー登録"
-
-# JavaScript 全テスト
-npm test
-
-# JavaScript 特定ファイル
-npm test -- auth.spec.js
-
-# JavaScript ウォッチモード
-npm test -- --watch
-
-# PHP ウォッチモード
-npm run php:test:watch
-```
-
----
-
-## 新機能の実装手順
-
-### ステップ 1: Gherkin 仕様を書く
-
-`features/` に `.feature` ファイルを作成する。テンプレートは `features/example.feature` を参照。
-
-```gherkin
-Feature: ユーザー登録
-  As a 新規ユーザー
-  I want メールとパスワードで登録したい
-  So that サービスを利用できる
-
-  Scenario: 正常な登録
-    Given 有効なメールアドレスとパスワードが入力されている
-    When 登録ボタンを押す
-    Then アカウントが作成される
-    And ダッシュボードにリダイレクトされる
-
-  Scenario: 重複メールでの登録失敗
-    Given 既存ユーザーと同じメールアドレスが入力されている
-    When 登録ボタンを押す
-    Then エラーメッセージが表示される
-```
-
-### ステップ 2: PHP テストを書く（RED）
-
-`tests/Features/BDD/` にテストファイルを作成。テンプレート: `tests/stubs/FeatureTemplate.php`
-
-```php
-/**
- * @test
- * Scenario: 正常な登録
- */
-public function ユーザーが有効な情報で登録できる(): void
-{
-    // Given
-    $data = ['email' => 'test@example.com', 'password' => 'secret123'];
-
-    // When
-    $response = $this->postJson('/api/register', $data);
-
-    // Then
-    $response->assertStatus(201);
-    $this->assertDatabaseHas('users', ['email' => 'test@example.com']);
-}
-```
-
-テストを実行して **失敗（RED）** を確認する：
-```bash
-php artisan test tests/Features/BDD/UserRegistrationTest.php
-```
-
-### ステップ 3: 最小実装を書く（GREEN）
-
-テストが通る最小限のコードだけを書く。過剰な実装をしない。
-
-### ステップ 4: GREEN を確認してリファクタリング
-
-```bash
-php artisan test tests/Features/BDD/UserRegistrationTest.php
-```
-
----
-
-## テストの書き方規約
-
-### PHP テスト
-
-- メソッド名は **日本語** で書く（仕様として読めること）
-- `Given / When / Then` をコメントで明示する
-- `@test` アノテーションを使う
-- テストは1つの振る舞いだけを検証する
-- **正常系・異常系・境界値・状態網羅の4種類を必ず書く**（「テストケース設計の必須粒度」参照）
-
-```php
-/** @test */
-public function 未認証ユーザーは保護されたページにアクセスできない(): void
-{
-    // When
-    $response = $this->get('/dashboard');
-
-    // Then
-    $response->assertRedirect('/login');
-}
-```
-
-### JavaScript テスト
-
-- `describe` ブロックで機能をグループ化する
-- `it` / `test` の説明は **「〜できる」「〜が表示される」** の形式で書く
-- AAA（Arrange / Act / Assert）パターンに従う
-
-```javascript
-describe('ログインフォーム', () => {
-  it('空のフォームを送信するとエラーが表示される', () => {
-    // Arrange
-    render(<LoginForm />);
-    // Act
-    fireEvent.click(screen.getByRole('button', { name: '送信' }));
-    // Assert
-    expect(screen.getByText('必須項目です')).toBeInTheDocument();
-  });
-});
-```
-
----
-
-## Claude への作業依頼パターン
-
-### 新機能を追加するとき
-
-```
-「〇〇機能を追加して」ではなく：
-
-「以下の仕様でテストを書いてから実装して：
-- ユーザーが〇〇できる
-- 〇〇の場合はエラーになる
-- 〇〇の場合は〇〇が表示される」
-```
-
-### バグを修正するとき
-
-```
-「バグを直して」ではなく：
-
-「このバグを再現するテストを先に書き、
-テストがREDになることを確認してから修正して」
-```
-
-### Claude が守るべきこと
-
-1. **実装を始める前に対象機能の `.feature` ファイルを必ず読む**（`features/<ロール>/<機能>.feature`）
-2. **テストなしの実装コードを書かない**
-3. **テストを実行してREDを確認してから実装に進む**
-4. **実装後にテストを実行してGREENを確認する**
-5. **テストが通らない状態でリポジトリを触らない**
-6. **過剰な実装・先読み設計をしない**（テストが要求する最小限のみ）
-
----
-
-## よくある間違いと対処法
-
-| 間違い | 正しいアプローチ |
-|--------|-----------------|
-| 実装してからテストを書く | テストを先に書いてREDを確認する |
-| 複数の機能を一度に実装する | 1シナリオずつREDGREENを繰り返す |
-| テストを削除してテストを通す | テストが要求する動作を実装する |
-| モックを多用して実装を隠す | できる限り実際の動作でテストする |
-| エラーを無視してテストをスキップする | エラーの原因を特定して修正する |
-
----
-
-## テンプレートの使い方
-
-```bash
-# PHP Feature テスト
-cp tests/stubs/FeatureTemplate.php tests/Features/BDD/MyFeatureTest.php
-
-# PHP Unit テスト
-cp tests/stubs/UnitTemplate.php tests/Unit/MyClassTest.php
-
-# JavaScript テスト
-cp resources/specs/SpecTemplate.js resources/specs/my-feature.spec.js
-
-# Gherkin 仕様書
-cp features/example.feature features/my-feature.feature
+php artisan test                                                   # PHP 全テスト
+php artisan test tests/Features/BDD/Admin/SurveyTest.php          # 特定ファイル
+php artisan test --filter="アンケートを公開できる"                  # メソッド名フィルタ
+npm test                                                           # JS 全テスト
+npm test -- --watch                                                # JS ウォッチモード
+npm run php:test:watch                                             # PHP ウォッチモード
 ```
 
 ---
 
 ## 参考ドキュメント
 
+- [docs/guides/](docs/guides/) — 各STEPの詳細手順書（STEPごとに必ず読む）
+- [docs/init/SPEC.md](docs/init/SPEC.md) — 要件定義書
+- [docs/init/DESIGN.md](docs/init/DESIGN.md) — 設計方針
 - [BDD_SETUP.md](BDD_SETUP.md) — 環境構築の詳細
-- [QUICKSTART_TEMPLATE.md](QUICKSTART_TEMPLATE.md) — テンプレートの使い方
-- [TEMPLATE_GUIDE.md](TEMPLATE_GUIDE.md) — 各テンプレートの詳細説明
-- [features/example.feature](features/example.feature) — Gherkin の書き方サンプル
